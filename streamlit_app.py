@@ -3,13 +3,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 import parser
 import json
+import html
 
 
 BUILD_DIR = "static/web/build" 
 
 st.set_page_config(page_title="RecallKit", layout="wide")
 
-tab1, tab2 = st.tabs(["📂 Manage Flashcards", "🎓 Study"])
+
+tab1, tab2, tab3 = st.tabs(["📂 Manage Flashcards", "🎓 Study", "ℹ️ Help"])
+
 
 def write_topics_index():
     os.makedirs(BUILD_DIR, exist_ok=True)
@@ -45,6 +48,26 @@ with tab1:
 
     st.subheader("Existing Flashcard Sets")
     json_files = glob.glob(os.path.join(BUILD_DIR, "*.json"))
+    st.subheader("Download")
+    if json_files:
+        for jf in json_files:
+            fname = os.path.basename(jf)
+            topic_name = os.path.splitext(fname)[0]
+
+            col1, col2, col3 = st.columns([3,1,1])
+            with col1:
+                st.write(fname)
+            with col2:
+                # Download JSON
+                with open(jf, "rb") as f:
+                    st.download_button("⬇️ JSON", f, file_name=fname, key=f"dl_json_{fname}")
+            with col3:
+                # Download TSV if exists
+                tsv_path = jf.replace(".json", ".tsv")
+                if os.path.exists(tsv_path):
+                    with open(tsv_path, "rb") as f:
+                        st.download_button("⬇️ TSV", f, file_name=os.path.basename(tsv_path), key=f"dl_tsv_{fname}")
+    st.subheader("Delete")
     if json_files:
         for jf in json_files:
             fname = os.path.basename(jf)
@@ -60,11 +83,7 @@ with tab1:
                     st.rerun()
     else:
         st.info("No flashcard sets yet.")
-
 with tab2:
-    # st.header("Study Mode")
-
-    # 1) Collect cards from all topics
     json_files = [
         p for p in glob.glob(os.path.join(BUILD_DIR, "*.json"))
         if os.path.basename(p) not in ("cards.json", "topics.json")
@@ -78,196 +97,48 @@ with tab2:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             for c in data.get("cards", []):
-                c["topic"] = topic_name  # tag card with its topic
+                c["topic"] = topic_name
             all_cards.extend(data.get("cards", []))
 
-        # 2) Inline assets (CSS) – if you already have these files, great; otherwise keep as-is
-        style_css = ""
-        css_path = os.path.join("web", "style.css")
-        if os.path.exists(css_path):
-            with open(css_path, "r", encoding="utf-8") as f:
-                style_css = f.read()
-        else:
-            # tiny fallback so it still looks reasonable
-            style_css = """
-            body{font-family:-apple-system,system-ui,Segoe UI,Roboto;margin:0}
-            main{max-width:900px;margin:0 auto;padding:16px}
-            h1{font-size:22px;margin:8px 0}
-            .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
-            .card{border:1px solid #ddd;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-            .title{font-weight:600;margin-bottom:8px}
-            .q,.a{font-size:18px;line-height:1.6;word-wrap:break-word}
-            button{padding:8px 12px;border-radius:10px;border:1px solid #cfcfcf;background:#fff}
-            select{padding:6px 10px;border-radius:8px;border:1px solid #cfcfcf}
-            hr{border:none;border-top:1px solid #eee;margin:10px 0}
-            .leitner{display:flex;gap:8px;margin-top:12px}
-            """
+        # Load HTML template
+        with open("static/study.html", "r", encoding="utf-8") as f:
+            html_template = f.read()
 
-        # 3) Build the full HTML (Showdown + MathJax + our JS app), injecting CARDS
-        html = f"""
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Study Cards</title>
-  <style>{style_css}</style>
+        # Inject flashcards into placeholder (no escaping)
+        cards_json = json.dumps(all_cards, ensure_ascii=False)
+        html = html_template.replace("__CARDS__", cards_json)
 
-  <!-- Showdown for Markdown -->
-  <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
+        # Optional quick debug in server logs
+        print("Number of cards collected:", len(all_cards))
 
-  <!-- MathJax for LaTeX -->
-  <script>
-  window.MathJax = {{
-    tex: {{ inlineMath: [['$', '$'], ['\\\\(', '\\\\)']] }},
-    svg: {{ fontCache: 'global' }}
-  }};
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+        components.html(html, height=1000, scrolling=True)
 
-  <script>
-  // Injected data from Streamlit
-  const CARDS = {{ "cards": {json.dumps(all_cards, ensure_ascii=False)} }};
-  </script>
+with tab3:
+    st.header("Welcome to RecallKit 🧠")
+    st.markdown("""
+    **RecallKit** turns your Markdown notes into interactive flashcards with spaced repetition.
 
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Study Cards</h1>
-      <div class="controls">
-        <select id="topic"></select>
-        <select id="tag"></select>
-        <button id="prev">Prev</button>
-        <button id="show">Show / Hide</button>
-        <button id="next">Next</button>
-      </div>
-    </header>
+    ### 📂 Manage Flashcards
+    - Upload `.md` files grouped by *topic name*.
+    - Flashcards are auto-parsed into JSON + TSV.
+    - You can delete or replace topics at any time.
 
-    <section class="card">
-      <div class="title" id="title"></div>
-      <div class="q" id="q"></div>
-      <hr/>
-      <div class="a" id="a" style="display:none"></div>
-      <div class="leitner">
-        <button id="again">Again</button>
-        <button id="hard">Hard</button>
-        <button id="good">Good</button>
-        <button id="easy">Easy</button>
-      </div>
-    </section>
-    <footer><small>Progress is saved locally in this browser (per-device).</small></footer>
-  </main>
+    ### 🎓 Study
+    - Select a topic (or "All").
+    - Filter by tags if present.
+    - Flip cards, reveal answers, and mark *Again / Hard / Good / Easy*.
+    - Your progress is saved in your browser (localStorage).
 
-  <script>
-  // === app.js logic (adapted to use CARDS instead of fetch) ===
-  let cards=[], queue=[], idx=0, shown=false;
+    ### ⬇️ Export
+    - Download generated files:
+      - **JSON** → reuse in other tools
+      - **TSV** → import into Quizlet
 
-  const fmt = new showdown.Converter({{
-    tables: true,
-    strikethrough: true,
-    ghCodeBlocks: true,
-    literalMidWordUnderscores: true,
-    simpleLineBreaks: true
-  }});
+    ### 📝 Notes
+    - Markdown + LaTeX are supported.
+    - Multiple topics are kept independent.
+    - No server database: progress stays on your device.
 
-  // Preserve LaTeX so MathJax can render it
-  fmt.addExtension(() => [{{
-    type: 'lang',
-    regex: /\\$\\$[^]*?\\$\\$|\\$[^$]+\\$/g,
-    replace: (m) => m
-  }}]);
-
-  function idOf(c){{ return (c.topic||"default")+"::"+(c.tag||"")+"::"+(c.title||"")+"::"+c.q; }}
-
-  function loadProgress() {{
-    try {{ return JSON.parse(localStorage.getItem("leitner")||"{{}}"); }} catch {{ return {{}}; }}
-  }}
-  function saveProgress(state) {{ localStorage.setItem("leitner", JSON.stringify(state)); }}
-  let prog = loadProgress(); // {{id: {{box,last}}}}
-
-  function schedule(box){{ return [0,0,1,3,7,16,35][Math.min(box,6)]; }}
-
-  function render() {{
-    if(queue.length===0){{
-      document.getElementById("title").textContent="";
-      document.getElementById("q").textContent="No cards.";
-      document.getElementById("a").textContent="";
-      return;
-    }}
-    const c = queue[idx];
-    document.getElementById("title").textContent = (c.topic ? `[${{c.topic}}] ` : "") + (c.title||"");
-    document.getElementById("q").innerHTML = fmt.makeHtml(c.q);
-    document.getElementById("a").innerHTML = fmt.makeHtml(c.a);
-    document.getElementById("a").style.display = shown ? "block" : "none";
-    if (window.MathJax && window.MathJax.typeset) window.MathJax.typeset();
-  }}
-
-  function move(d){{ if(queue.length){{ idx=(idx+d+queue.length)%queue.length; shown=false; render(); }} }}
-
-  function grade(quality){{
-    if(!queue.length) return;
-    const c = queue[idx]; const id = idOf(c);
-    const st = prog[id] || {{box:1,last:0}};
-    if(quality==="again") st.box=1;
-    else if(quality==="hard") st.box=Math.max(1, st.box);
-    else if(quality==="good") st.box=Math.min(6, st.box+1);
-    else if(quality==="easy") st.box=Math.min(6, st.box+2);
-    st.last = Date.now();
-    prog[id]=st; saveProgress(prog);
-    move(1);
-  }}
-
-  function updateTagOptions(){{
-    const topicSel = document.getElementById("topic").value;
-    const tagEl = document.getElementById("tag");
-    const visible = cards.filter(c => !topicSel || c.topic===topicSel);
-    const tags = [...new Set(visible.map(c=>c.tag))].filter(Boolean).sort();
-    tagEl.innerHTML = `<option value="">All</option>` + tags.map(t=>`<option>${{t}}</option>`).join("");
-  }}
-
-  function applyFilters(){{
-    const topicSel = document.getElementById("topic").value;
-    const tagSel = document.getElementById("tag").value;
-    const now = Date.now();
-    const filtered = cards.filter(c => (!topicSel || c.topic===topicSel) && (!tagSel || c.tag===tagSel));
-    let due = filtered.filter(c => {{
-      const st = prog[idOf(c)] || {{box:1,last:0}};
-      const dueTime = st.last + schedule(st.box)*86400*1000;
-      return dueTime <= now;
-    }});
-    if(due.length===0) due = filtered.slice();
-    queue = due; idx=0; shown=false; render();
-  }}
-
-  function boot(){{
-    // Load from injected CARDS
-    cards = (CARDS.cards || []).slice();
-    // Topic dropdown
-    const topicEl = document.getElementById("topic");
-    const topics = [...new Set(cards.map(c=>c.topic||"default"))].sort();
-    topicEl.innerHTML = `<option value="">All</option>` + topics.map(t=>`<option>${{t}}</option>`).join("");
-    updateTagOptions();
-    applyFilters();
-  }}
-
-  // Wire up controls
-  document.getElementById("prev").onclick = () => move(-1);
-  document.getElementById("next").onclick = () => move(1);
-  document.getElementById("show").onclick = () => {{ shown=!shown; render(); }};
-  document.getElementById("again").onclick = () => grade("again");
-  document.getElementById("hard").onclick  = () => grade("hard");
-  document.getElementById("good").onclick  = () => grade("good");
-  document.getElementById("easy").onclick  = () => grade("easy");
-  document.getElementById("topic").onchange = () => {{ updateTagOptions(); applyFilters(); }};
-  document.getElementById("tag").onchange   = applyFilters;
-
-  // Start
-  boot();
-  </script>
-</body>
-</html>
-        """
-
-        # 4) Render inside Streamlit
-        components.html(html, height=900, scrolling=True)
+    ---
+    **Tip:** Best experienced on desktop or iPad browsers.
+    """)
