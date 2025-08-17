@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  recallkit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recallkit
+    ports:
+      - "8501:8501"
+    environment:
+      # Streamlit basics
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    volumes:
+      # Mount your project for live edits (dev-friendly)
+      - ./:/app:rw
+      # Ensure the build dir persists on the host (flashcard outputs)
+      - ./static/web/build:/app/static/web/build:rw
+    # If you’re on Linux and want created files to match your user:
+    user: "${UID:-1000}:${GID:-1000}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

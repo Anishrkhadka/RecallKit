@@ -59,7 +59,10 @@
     <script>
     // Parse safely from the JSON script tag
     const CARDS = { cards: JSON.parse(document.getElementById('cards-data').textContent) };
-    </script>
+   </script>
+
+
+
 
 
   
@@ -74,6 +77,10 @@
         <button id="prev">Prev</button>
         <button id="show">Show / Hide</button>
         <button id="next">Next</button>
+         <label style="display:flex;gap:6px;align-items:center;font-size:14px;">
+            <input type="checkbox" id="shuffle" />
+            Shuffle
+          </label>
         <button id="resetProg" title="Clear saved progress">🔄 Reset Progress</button>
       </div>
       <div id="progress" style="margin:8px 0; font-size:14px; color:#555;"></div>
@@ -96,113 +103,141 @@
     <footer><small>Progress is saved locally in this browser (per-device).</small></footer>
   </main>
 
-  <!-- Your old app.js logic -->
-  <script>
-    document.getElementById("resetProg").onclick = () => {
-        if (confirm("Reset all flashcard progress? This cannot be undone.")) {
-            localStorage.removeItem("leitner"); // clear saved state
-            prog = {}; // empty in-memory progress
-            applyFilters(); // rebuild queue, all cards due now
-            alert("Progress has been reset. All cards are due again.");
-        }
-        };
+<script>
+  // === global state ===
+  let cards=[], queue=[], idx=0, shown=false;
+  let prog = loadProgress();
 
-    // === same JS logic we already built ===
-    let cards=[], queue=[], idx=0, shown=false;
-    const fmt = new showdown.Converter({
-      tables: true, strikethrough: true, ghCodeBlocks: true,
-      literalMidWordUnderscores: true, simpleLineBreaks: true,
-      ghCompatibleHeaderId: true  
+  const shuffleEl = document.getElementById("shuffle");
+
+  // Markdown renderer
+  const fmt = new showdown.Converter({
+    tables: true, strikethrough: true, ghCodeBlocks: true,
+    literalMidWordUnderscores: true, simpleLineBreaks: true,
+    ghCompatibleHeaderId: true  
+  });
+  fmt.addExtension(() => [{
+    type: 'lang',
+    regex: /\$\$[^]*?\$\$|\$[^$]+\$/g,
+    replace: (m) => m
+  }]);
+
+  // --- helpers ---
+  function idOf(c){ return (c.topic||"default")+"::"+(c.tag||"")+"::"+(c.title||"")+"::"+c.q; }
+  function loadProgress(){ try {return JSON.parse(localStorage.getItem("leitner")||"{}");} catch{return {}} }
+  function saveProgress(state){ localStorage.setItem("leitner", JSON.stringify(state)); }
+  function schedule(box){ return [0,0,1,3,7,16,35][Math.min(box,6)]; }
+
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+
+  function loadShufflePref() {
+    try { return localStorage.getItem("rk_shuffle") === "1"; } catch { return false; }
+  }
+  function saveShufflePref(v) {
+    try { localStorage.setItem("rk_shuffle", v ? "1" : "0"); } catch {}
+  }
+
+  // --- rendering ---
+  function render(){
+    if (queue.length===0){
+      document.getElementById("title").textContent="";
+      document.getElementById("q").textContent="No cards.";
+      document.getElementById("a").textContent="";
+      document.getElementById("meta").textContent="";
+      document.getElementById("progress").textContent="";
+      return;
+    }
+    const c=queue[idx]; const id=idOf(c); const st=prog[id]||{box:1,last:0};
+    const dueIn=schedule(st.box)*86400*1000-(Date.now()-st.last);
+    const days=dueIn>0?Math.ceil(dueIn/86400/1000):0;
+
+    document.getElementById("title").textContent=(c.topic?`[${c.topic}] `:"")+(c.title||"");
+    document.getElementById("q").innerHTML=fmt.makeHtml(c.q);
+    document.getElementById("a").innerHTML=fmt.makeHtml(c.a);
+    document.getElementById("a").style.display=shown?"block":"none";
+
+    document.getElementById("meta").textContent=`Box: ${st.box} | Next review: ${days===0?"due now":"in "+days+" day(s)"}`;
+    document.getElementById("progress").textContent=`Card ${idx+1} of ${queue.length} (Topic: ${c.topic||"default"})`;
+
+    if(window.MathJax && window.MathJax.typeset) window.MathJax.typeset();
+  }
+
+  // --- navigation + grading ---
+  function move(d){ if(queue.length){ idx=(idx+d+queue.length)%queue.length; shown=false; render(); } }
+  function grade(q){ if(!queue.length) return;
+    const c=queue[idx]; const id=idOf(c); const st=prog[id]||{box:1,last:0};
+    if(q==="again") st.box=1;
+    else if(q==="hard") st.box=Math.max(1,st.box);
+    else if(q==="good") st.box=Math.min(6,st.box+1);
+    else if(q==="easy") st.box=Math.min(6,st.box+2);
+    st.last=Date.now(); prog[id]=st; saveProgress(prog); move(1);
+  }
+
+  // --- filtering ---
+  function updateTagOptions(){
+    const topicSel=document.getElementById("topic").value;
+    const tagEl=document.getElementById("tag");
+    const visible=cards.filter(c=>!topicSel||c.topic===topicSel);
+    const tags=[...new Set(visible.map(c=>c.tag))].filter(Boolean).sort();
+    tagEl.innerHTML=`<option value="">All</option>`+tags.map(t=>`<option>${t}</option>`).join("");
+  }
+
+  function applyFilters(){
+    const topicSel=document.getElementById("topic").value;
+    const tagSel=document.getElementById("tag").value;
+    const now=Date.now();
+
+    const filtered=cards.filter(c=>(!topicSel||c.topic===topicSel)&&(!tagSel||c.tag===tagSel));
+
+    let due=filtered.filter(c=>{
+      const st=prog[idOf(c)]||{box:1,last:0};
+      const dueTime=st.last+schedule(st.box)*86400*1000;
+      return dueTime<=now;
     });
-    fmt.addExtension(() => [{
-      type: 'lang',
-      regex: /\$\$[^]*?\$\$|\$[^$]+\$/g,
-      replace: (m) => m
-    }]);
+    if(due.length===0) due=filtered.slice();
 
-    function idOf(c){ return (c.topic||"default")+"::"+(c.tag||"")+"::"+(c.title||"")+"::"+c.q; }
-    function loadProgress(){ try {return JSON.parse(localStorage.getItem("leitner")||"{}");} catch{return {}} }
-    function saveProgress(state){ localStorage.setItem("leitner", JSON.stringify(state)); }
-    let prog = loadProgress();
-    function schedule(box){ return [0,0,1,3,7,16,35][Math.min(box,6)]; }
-
-    function render(){
-      document.getElementById("progress").textContent =
-      `Card ${idx+1} of ${queue.length} (Progress entries: ${Object.keys(prog).length})`;
-
-      if (queue.length===0){
-        document.getElementById("title").textContent="";
-        document.getElementById("q").textContent="No cards.";
-        document.getElementById("a").textContent="";
-        document.getElementById("meta").textContent="";
-        document.getElementById("progress").textContent="";
-        return;
-      }
-      const c=queue[idx]; const id=idOf(c); const st=prog[id]||{box:1,last:0};
-      const dueIn=schedule(st.box)*86400*1000-(Date.now()-st.last);
-      const days=dueIn>0?Math.ceil(dueIn/86400/1000):0;
-
-      document.getElementById("title").textContent=(c.topic?`[${c.topic}] `:"")+(c.title||"");
-      document.getElementById("q").innerHTML=fmt.makeHtml(c.q);
-      document.getElementById("a").innerHTML=fmt.makeHtml(c.a);
-      document.getElementById("a").style.display=shown?"block":"none";
-
-      document.getElementById("meta").textContent=`Box: ${st.box} | Next review: ${days===0?"due now":"in "+days+" day(s)"}`;
-      document.getElementById("progress").textContent=`Card ${idx+1} of ${queue.length} (Topic: ${c.topic||"default"})`;
-      if(window.MathJax && window.MathJax.typeset) window.MathJax.typeset();
+    if (shuffleEl.checked && due.length>1) {
+      shuffleArray(due);
     }
 
-    function move(d){ if(queue.length){ idx=(idx+d+queue.length)%queue.length; shown=false; render(); } }
-    function grade(q){ if(!queue.length) return;
-      const c=queue[idx]; const id=idOf(c); const st=prog[id]||{box:1,last:0};
-      if(q==="again") st.box=1;
-      else if(q==="hard") st.box=Math.max(1,st.box);
-      else if(q==="good") st.box=Math.min(6,st.box+1);
-      else if(q==="easy") st.box=Math.min(6,st.box+2);
-      st.last=Date.now(); prog[id]=st; saveProgress(prog); move(1);
-    }
+    queue=due; idx=0; shown=false; render();
 
-    function updateTagOptions(){
-      const topicSel=document.getElementById("topic").value;
-      const tagEl=document.getElementById("tag");
-      const visible=cards.filter(c=>!topicSel||c.topic===topicSel);
-      const tags=[...new Set(visible.map(c=>c.tag))].filter(Boolean).sort();
-      tagEl.innerHTML=`<option value="">All</option>`+tags.map(t=>`<option>${t}</option>`).join("");
-    }
+    document.getElementById("progress").textContent =
+      `Showing ${queue.length} / ${filtered.length}${shuffleEl.checked ? " (shuffled)" : ""}`;
+  }
 
-    function applyFilters(){
-      const topicSel=document.getElementById("topic").value;
-      const tagSel=document.getElementById("tag").value;
-      const now=Date.now();
-      const filtered=cards.filter(c=>(!topicSel||c.topic===topicSel)&&(!tagSel||c.tag===tagSel));
-      let due=filtered.filter(c=>{
-        const st=prog[idOf(c)]||{box:1,last:0};
-        const dueTime=st.last+schedule(st.box)*86400*1000;
-        return dueTime<=now;
-      });
-      if(due.length===0) due=filtered.slice();
-      queue=due; idx=0; shown=false; render();
-    }
+  // --- boot ---
+  function boot(){
+    cards=(CARDS.cards||[]).slice();
 
-    function boot(){
-      cards=(CARDS.cards||[]).slice();
-      const topicEl=document.getElementById("topic");
-      const topics=[...new Set(cards.map(c=>c.topic||"default"))].sort();
-      topicEl.innerHTML=`<option value="">All</option>`+topics.map(t=>`<option>${t}</option>`).join("");
-      updateTagOptions(); applyFilters();
-    }
+    const topicEl=document.getElementById("topic");
+    const topics=[...new Set(cards.map(c=>c.topic||"default"))].sort();
+    topicEl.innerHTML=`<option value="">All</option>`+topics.map(t=>`<option>${t}</option>`).join("");
 
-    document.getElementById("prev").onclick=()=>move(-1);
-    document.getElementById("next").onclick=()=>move(1);
-    document.getElementById("show").onclick=()=>{ shown=!shown; render(); };
-    document.getElementById("again").onclick=()=>grade("again");
-    document.getElementById("hard").onclick=()=>grade("hard");
-    document.getElementById("good").onclick=()=>grade("good");
-    document.getElementById("easy").onclick=()=>grade("easy");
-    document.getElementById("topic").onchange=()=>{ updateTagOptions(); applyFilters(); };
-    document.getElementById("tag").onchange=applyFilters;
+    shuffleEl.checked = loadShufflePref();
+    updateTagOptions();
+    applyFilters();
+  }
 
-    boot();
-  </script>
+  // --- events ---
+  document.getElementById("prev").onclick=()=>move(-1);
+  document.getElementById("next").onclick=()=>move(1);
+  document.getElementById("show").onclick=()=>{ shown=!shown; render(); };
+  document.getElementById("again").onclick=()=>grade("again");
+  document.getElementById("hard").onclick=()=>grade("hard");
+  document.getElementById("good").onclick=()=>grade("good");
+  document.getElementById("easy").onclick=()=>grade("easy");
+  document.getElementById("topic").onchange=()=>{ updateTagOptions(); applyFilters(); };
+  document.getElementById("tag").onchange=applyFilters;
+  shuffleEl.onchange=()=>{ saveShufflePref(shuffleEl.checked); applyFilters(); };
+
+  boot();
+</script>
+
 </body>
 </html>
