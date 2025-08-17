@@ -10,6 +10,19 @@ BUILD_DIR = "static/web/build"
 
 st.set_page_config(page_title="RecallKit", layout="wide")
 
+import base64
+
+# Load favicon as base64
+favicon_path = "static/favicon.png"
+if os.path.exists(favicon_path):
+    with open(favicon_path, "rb") as f:
+        favicon_data = f.read()
+    favicon_b64 = base64.b64encode(favicon_data).decode()
+    favicon_html = f"""
+        <link rel="icon" href="data:image/png;base64,{favicon_b64}">
+    """
+    st.markdown(favicon_html, unsafe_allow_html=True)
+
 
 tab1, tab2, tab3 = st.tabs(["📂 Manage Flashcards", "🎓 Study", "ℹ️ Help"])
 
