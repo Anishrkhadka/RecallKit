@@ -1,3 +1,4 @@
+
 version: "3.8"
 
 services:
@@ -9,18 +10,27 @@ services:
     ports:
       - "8501:8501"
     environment:
-      # Streamlit basics
       - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
     volumes:
-      # Mount your project for live edits (dev-friendly)
       - ./:/app:rw
-      # Ensure the build dir persists on the host (flashcard outputs)
+      - progress_data:/app/data/progress
       - ./static/web/build:/app/static/web/build:rw
-    # If you’re on Linux and want created files to match your user:
-    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8501/_stcore/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+
+  recallkit_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: recallkit_api
+    ports:
+      - "8502:8502"
+    environment:
+      - RECALLKIT_API_TOKEN=mytoken
+      - RECALLKIT_DATA_DIR=/app/data/progress
+
+    volumes:
+      - progress_data:/app/data/progress
+    restart: unless-stopped
+
+volumes:
+  progress_data:
