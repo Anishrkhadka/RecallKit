@@ -124,6 +124,17 @@
   const CARDS = { cards: JSON.parse(document.getElementById('cards-data').textContent) };
   </script>
 
+  <!-- Highlight.js for syntax colouring -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("pre code").forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
   
 </head>
 <body>
@@ -240,6 +251,14 @@
     document.getElementById("title").textContent=(c.topic?`[${c.topic}] `:"")+(c.title||"");
     document.getElementById("q").innerHTML=fmt.makeHtml(c.q);
     document.getElementById("a").innerHTML=fmt.makeHtml(c.a);
+    //Highlight code blocks after rendering
+    document.querySelectorAll("pre code").forEach((block) => {
+      if (!block.className.includes("language")) {
+        block.classList.add("language-python"); // default to python if not specified
+      }
+      hljs.highlightElement(block);
+    });
+
     document.getElementById("a").style.display=shown?"block":"none";
 
     document.getElementById("meta").textContent=`Box: ${st.box} | Next review: ${days===0?"due now":"in "+days+" day(s)"}`;
