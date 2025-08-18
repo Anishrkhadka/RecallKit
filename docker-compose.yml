@@ -9,12 +9,11 @@ services:
     container_name: recallkit
     ports:
       - "8501:8501"
-    environment:
-      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
     volumes:
       - ./:/app:rw
       - progress_data:/app/data/progress
       - ./static/web/build:/app/static/web/build:rw
+    env_file: .env
     restart: unless-stopped
 
   recallkit_api:
@@ -24,13 +23,11 @@ services:
     container_name: recallkit_api
     ports:
       - "8502:8502"
-    environment:
-      - RECALLKIT_API_TOKEN=mytoken
-      - RECALLKIT_DATA_DIR=/app/data/progress
-
+    env_file: .env
     volumes:
       - progress_data:/app/data/progress
     restart: unless-stopped
 
 volumes:
   progress_data:
+

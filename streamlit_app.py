@@ -6,6 +6,10 @@ import json
 import html
 
 
+# Load environment config
+API_TOKEN = os.getenv("RECALLKIT_API_TOKEN", "")
+DATA_DIR = os.getenv("RECALLKIT_DATA_DIR", "/app/data/progress")
+
 BUILD_DIR = "static/web/build" 
 
 st.set_page_config(page_title="RecallKit", layout="wide")
@@ -117,14 +121,16 @@ with tab2:
         with open("static/study.html", "r", encoding="utf-8") as f:
             html_template = f.read()
 
-        # Inject flashcards into placeholder (no escaping)
         cards_json = json.dumps(all_cards, ensure_ascii=False)
-        html = html_template.replace("__CARDS__", cards_json)
 
-        # Optional quick debug in server logs
-        print("Number of cards collected:", len(all_cards))
+        html = html_template \
+        .replace("__CARDS__", cards_json) \
+        .replace("__API_TOKEN__", API_TOKEN) \
+        .replace("__API_BASE__", os.getenv("RECALLKIT_API_BASE", "http://localhost:8502/api"))
+
 
         components.html(html, height=1000, scrolling=True)
+
 
 with tab3:
     st.header("Welcome to RecallKit 🧠")

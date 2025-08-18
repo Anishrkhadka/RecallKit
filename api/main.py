@@ -5,6 +5,10 @@ import json
 import os
 from typing import Dict, Any
 
+import logging
+logger = logging.getLogger("uvicorn.error")
+
+
 # Where progress JSON files are stored
 DATA_DIR = Path(os.getenv("RECALLKIT_DATA_DIR", "/app/data/progress"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,10 +54,24 @@ def put_progress(profile: str, body: Dict[str, Any], authorization: str = Header
     if authorization.lower().startswith("bearer "):
         token = authorization[7:]
     if not API_TOKEN or token != API_TOKEN:
+        logger.warning(f"Rejected update for profile: {profile} — token mismatch")
         raise HTTPException(status_code=401, detail="Invalid or missing token")
+
 
     p = _path_for(profile)
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(p)
     return {"ok": True}
+
+@app.delete("/api/progress/{profile}")
+def delete_progress(profile: str, authorization: str = Header(default="")):
+    token = authorization.removeprefix("Bearer ").strip()
+    if not API_TOKEN or token != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+
+    p = _path_for(profile)
+    if p.exists():
+        p.unlink()
+    return {"deleted": True}
+

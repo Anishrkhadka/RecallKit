@@ -52,13 +52,7 @@
       const p = new URLSearchParams(location.search).get("profile");
       return (p && p.trim()) || "default";
     }
-    // call API on the same host, port 8000
-    function apiBase() {
-      const u = new URL(location.href);
-      return `${u.protocol}//${u.hostname}:8502/api`;
-    }
-    // provide your token here (or inject via Streamlit if you prefer)
-    const API_TOKEN = "supersecret_please_change";  // must match RECALLKIT_API_TOKEN
+   
 
     async function fetchProgressServer(profile) {
       try {
@@ -98,6 +92,20 @@
     }
     function saveProgressLocal(state){
       try { localStorage.setItem(storageKey(), JSON.stringify(state)); } catch {}
+    }
+  </script>
+
+  <script>
+    const API_TOKEN = "__API_TOKEN__";
+    const API_BASE = "__API_BASE__";
+
+    function getProfile() {
+      const p = new URLSearchParams(location.search).get("profile");
+      return (p && p.trim()) || "default";
+    }
+
+    function apiBase() {
+      return API_BASE;
     }
   </script>
 
