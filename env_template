@@ -1,0 +1,9 @@
+# .env
+# API token for auth
+RECALLKIT_API_TOKEN=mytoken
+
+# Shared data directory inside container
+RECALLKIT_DATA_DIR=/app/data/progress
+
+# Streamlit config
+STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
