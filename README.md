@@ -33,11 +33,10 @@ Your `.md` sections look like this:
 ```mermaid
 flowchart LR
     A[Write Notes] --> B[Use NotebookLM or LLM with RAG<br>to Generate Flashcards]
-    B --> C[Format as Markdown Flashcards<br>Question & Answer]
-    C --> D[Upload .md in GUI<br>📂 Manage Flashcards]
-    D --> E[RecallKit Converts<br>to JSON + TSV]
-    E --> F[Study in GUI<br>🎓 FlashCards Tab]
-    F --> G[Progress Synced<br>LocalStorage / FastAPI]
+    B --> C[Upload .md in GUI<br>📂 Manage Flashcards]
+    C --> D[RecallKit Converts<br>to JSON + TSV]
+    D --> E[Study in GUI<br>🎓 FlashCards Tab]
+    E --> F[Progress Synced<br>LocalStorage / FastAPI]
 
 ```
 
