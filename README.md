@@ -28,6 +28,19 @@ Your `.md` sections look like this:
 
 ## 🚀 How to Use
 
+## Possible Workflow — can use NotebookLM or any LLM with RAG
+
+```mermaid
+flowchart LR
+    A[Write Notes] --> B[Use NotebookLM or LLM with RAG<br>to Generate Flashcards]
+    B --> C[Format as Markdown Flashcards<br>Question & Answer]
+    C --> D[Upload .md in GUI<br>📂 Manage Flashcards]
+    D --> E[RecallKit Converts<br>to JSON + TSV]
+    E --> F[Study in GUI<br>🎓 FlashCards Tab]
+    F --> G[Progress Synced<br>LocalStorage / FastAPI]
+
+```
+
 ### 1. Run with Docker (recommended)
 
 ```bash
