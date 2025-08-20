@@ -6,6 +6,8 @@
 
 RecallKit turns your Markdown notes into interactive flashcards with **spaced repetition**.  
 
+<img src="demo.gif" alt="RecallKit">
+
 Your `.md` sections look like this:
 
 ```markdown
