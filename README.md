@@ -28,7 +28,7 @@ Your `.md` sections look like this:
 
 ## 🚀 How to Use
 
-## Possible Workflow — can use NotebookLM or any LLM with RAG
+### Possible Workflow — can use NotebookLM or any LLM with RAG
 
 ```mermaid
 flowchart LR
