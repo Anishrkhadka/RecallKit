@@ -7,3 +7,6 @@ RECALLKIT_DATA_DIR=/app/data/progress
 
 # Streamlit config
 STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# server ip
+RECALLKIT_API_BASE=http://localhost:8502/api

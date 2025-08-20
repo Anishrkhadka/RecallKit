@@ -28,7 +28,7 @@ if os.path.exists(favicon_path):
     st.markdown(favicon_html, unsafe_allow_html=True)
 
 
-tab1, tab2, tab3 = st.tabs(["📂 Manage Flashcards", "🎓 Study", "ℹ️ Help"])
+tab1, tab2 = st.tabs(["🎓 FlashCards", "📂 Manage Flashcards" ])
 
 
 def write_topics_index():
@@ -42,7 +42,7 @@ def write_topics_index():
     with open(os.path.join(BUILD_DIR, "topics.json"), "w", encoding="utf-8") as f:
         json.dump({"topics": sorted(topics)}, f, ensure_ascii=False, indent=2)
 
-with tab1:
+with tab2:
     st.header("Upload Markdown Notes")
     topic = st.text_input("Topic name (used for file naming)", "default")
     uploaded_files = st.file_uploader("Drop your .md files here", type=["md"], accept_multiple_files=True)
@@ -100,7 +100,8 @@ with tab1:
                     st.rerun()
     else:
         st.info("No flashcard sets yet.")
-with tab2:
+
+with tab1:
     json_files = [
         p for p in glob.glob(os.path.join(BUILD_DIR, "*.json"))
         if os.path.basename(p) not in ("cards.json", "topics.json")
@@ -130,34 +131,3 @@ with tab2:
 
 
         components.html(html, height=1000, scrolling=True)
-
-
-with tab3:
-    st.header("Welcome to RecallKit 🧠")
-    st.markdown("""
-    **RecallKit** turns your Markdown notes into interactive flashcards with spaced repetition.
-
-    ### 📂 Manage Flashcards
-    - Upload `.md` files grouped by *topic name*.
-    - Flashcards are auto-parsed into JSON + TSV.
-    - You can delete or replace topics at any time.
-
-    ### 🎓 Study
-    - Select a topic (or "All").
-    - Filter by tags if present.
-    - Flip cards, reveal answers, and mark *Again / Hard / Good / Easy*.
-    - Your progress is saved in your browser (localStorage).
-
-    ### ⬇️ Export
-    - Download generated files:
-      - **JSON** → reuse in other tools
-      - **TSV** → import into Quizlet
-
-    ### 📝 Notes
-    - Markdown + LaTeX are supported.
-    - Multiple topics are kept independent.
-    - No server database: progress stays on your device.
-
-    ---
-    **Tip:** Best experienced on desktop or iPad browsers.
-    """)
