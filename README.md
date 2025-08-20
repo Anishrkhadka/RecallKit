@@ -1,10 +1,20 @@
-# 📚 RecallKit
+
+# RecallKit
+
+<img src="static/favicon.png" alt="RecallKit logo" width="100" height="100">
+
 
 RecallKit turns your Markdown notes into interactive flashcards with **spaced repetition**.  
 
 Your `.md` sections look like this:
 
 ```markdown
+---
+### Flashcard 1: Title
+* **Question**: What is ... ?
+* **Answer**:
+    * bullet points
+    * formulas: $$ y = ax + b $$
 ---
 ### Flashcard N: Title
 * **Question**: What is ... ?
@@ -19,15 +29,14 @@ Your `.md` sections look like this:
 ### 1. Run with Docker (recommended)
 
 ```bash
-docker build -t study-site .
-docker run -p 8501:8501 study-site
+docker compose up --build
 ```
 
-Then open [http://localhost:8501](http://localhost:8501) in your browser or iPad.
+Then open [http://localhost:8501](http://localhost:8501) in your browser.
 
 ---
 
-### 2. Upload & Manage
+### 2. Upload & Manage Multi Library
 
 * Go to **📂 Manage Flashcards** tab.
 * Enter a topic name (e.g. `time_series`) and upload one or more `.md` files.
@@ -38,10 +47,10 @@ Then open [http://localhost:8501](http://localhost:8501) in your browser or iPad
 
 ### 3. Study
 
-* Switch to the **🎓 Study** tab.
+* Switch to the **🎓 FlashCard** tab.
 * Choose a topic (or “All”) and optionally filter by tag.
 * Use the interface to flip cards, reveal answers, and mark *Again / Hard / Good / Easy*.
-* Progress is tracked with a simple Leitner-style system stored in your browser (localStorage).
+* Progress is tracked with a simple Leitner-style system stored in your browser and sync to server.
 
 ---
 
@@ -58,4 +67,4 @@ Then open [http://localhost:8501](http://localhost:8501) in your browser or iPad
 
 * Supports **Markdown** rendering and **LaTeX formulas** (via KaTeX).
 * Each topic is independent, so you can keep multiple subjects (e.g. *maths*, *time series*, *statistics*).
-* No server-side DB — progress is stored per-device in your browser.
+

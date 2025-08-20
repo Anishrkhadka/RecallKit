@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir streamlit
 WORKDIR /app
 
 # Copy source code
-COPY streamlit_app.py parser.py /app/
+COPY streamlit_app.py /src/utils.py /app/
 
 # Copy static assets (HTML, CSS, JS, etc.)
 COPY static /app/static
